@@ -1,6 +1,7 @@
 import app from './app.js';
 
-const PORT = process.env.PORT || 3000;
+// 3100 par défaut : 3000 déjà utilisé par l'app "dnd" (PM2) sur le Pi.
+const PORT = process.env.PORT || 3100;
 const HOST = process.env.HOST || '127.0.0.1';
 const server = app.listen(PORT, HOST, () => {
   console.log(`Serveur RSVP actif : http://${HOST}:${PORT}`);

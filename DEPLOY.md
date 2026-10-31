@@ -1,150 +1,91 @@
-# Guide de Déploiement — Raspberry Pi (ARM64) + Nginx + Cloudflared
+# Déploiement – Raspberry Pi 3B (PM2 + Nginx 8085 + Cloudflare Tunnel)
 
-Ce document détaille l'installation et le déploiement en production de **Liseuse Rapide RSVP** sur Raspberry Pi (architecture ARM64 / Linux), derrière un reverse-proxy Nginx et un tunnel Cloudflared.
+Adapté à l'infra existante :
 
----
+| Élément | Valeur |
+|---|---|
+| Dossier projet | `/mnt/shared_nas/rapide-lecture` |
+| Process Node (PM2) | `rapide-lecture` → `127.0.0.1:3100` (3000 = `dnd`) |
+| Nginx | bloc `server` dans `/etc/nginx/sites-available/static-sites`, `listen 8085` |
+| Cloudflare | `rapide-lecture.noullez.com` → `http://localhost:8085` (déjà fait) |
 
-## 1. Prérequis & Compatibilité ARM Pure-JS
+> Contrairement à maze/cube/portfolio, ce site n'est **pas purement statique** :
+> l'import EPUB passe par l'API Node (`/api/parse`). Nginx fait donc proxy vers
+> Node (port 3100) et sert seulement `/assets/` directement depuis le NAS.
 
-- **Architecture** : Raspberry Pi OS 64-bit (aarch64 / arm64) ou Ubuntu Server ARM64.
-- **Node.js** : `>= 18.0.0` (testé et validé sur Node.js 18, 20 et 24).
-- **Compatibilité 100% Pure JavaScript** : Toutes les dépendances de production (`express`, `helmet`, `multer`, `jszip`, `cheerio`, `dompurify`) sont en JavaScript pur. Aucune compilation native C/C++ (`node-gyp`, `python`, `build-essential`) n'est requise lors de l'installation, garantissant une installation instantanée et sans erreur sur ARM.
+## Prérequis
 
----
+- Node.js **≥ 20.19** (requis par Vite 8 pour le build) : `node -v`
+- PM2 déjà installé (`pm2 status`).
 
-## 2. Installation & Démarrage
+## 1. Copier le projet sur le NAS
+
+Depuis le PC (sans `node_modules/` ni `dist/`), ou via git :
 
 ```bash
-# 1. Cloner le dépôt
-git clone https://github.com/votre-compte/rapid-serial-visual-presentation.git
-cd rapid-serial-visual-presentation
-
-# 2. Configurer les variables d'environnement
-cp .env.example .env
-
-# 3. Installer les dépendances
-npm install
-
-# 4. Compiler le frontend avec Vite & Tailwind CSS (vers dist/)
-npm run build
-
-# 5. Démarrer l'application
-npm start
+cd /mnt/shared_nas
+git clone <url-du-repo> rapide-lecture
+cd rapide-lecture
 ```
 
-Par défaut, le serveur écoute localement sur `http://127.0.0.1:3000`.
+## 2. Installer et compiler
 
----
-
-## 3. Configuration Nginx (Reverse Proxy)
-
-Créer le fichier `/etc/nginx/sites-available/rapide-lecture.noullez.com` :
-
-```nginx
-server {
-    listen 80;
-    server_name rapide-lecture.noullez.com;
-
-    # Taille maximale des fichiers EPUB / texte autorisés
-    client_max_body_size 30M;
-
-    # Compression gzip pour les assets
-    gzip on;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
-
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-
-        # En-têtes pour WebSockets et proxying
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-
-        # En-têtes pour conserver l'IP réelle et le schéma HTTPS Cloudflare
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        # Timeouts pour uploads volumineux
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
-    }
-}
-```
-
-Activer le site et recharger Nginx :
 ```bash
-sudo ln -s /etc/nginx/sites-available/rapide-lecture.noullez.com /etc/nginx/sites-enabled/
+cd /mnt/shared_nas/rapide-lecture
+npm ci
+npm run build          # génère dist/
+```
+
+En cas d'erreur de symlinks (`EPERM symlink`, fréquent sur partage SMB/CIFS) :
+
+```bash
+npm ci --no-bin-links
+node node_modules/vite/bin/vite.js build
+```
+
+Build trop lent / mémoire insuffisante sur le Pi 3B ? Compiler sur le PC
+(`npm run build`) puis copier le dossier `dist/` dans
+`/mnt/shared_nas/rapide-lecture/dist`, et sur le Pi faire seulement `npm ci --omit=dev`.
+
+## 3. Lancer avec PM2
+
+```bash
+pm2 start ecosystem.config.cjs
+pm2 save
+pm2 status             # rapide-lecture doit être "online"
+curl -I http://127.0.0.1:3100   # HTTP/1.1 200 OK
+```
+
+## 4. Déclarer le site dans Nginx
+
+Ajouter le contenu de [`deploy/nginx-rapide-lecture.conf`](deploy/nginx-rapide-lecture.conf)
+à la fin de `/etc/nginx/sites-available/static-sites` :
+
+```bash
+cat /mnt/shared_nas/rapide-lecture/deploy/nginx-rapide-lecture.conf | sudo tee -a /etc/nginx/sites-available/static-sites
 sudo nginx -t
 sudo systemctl reload nginx
+curl -I -H "Host: rapide-lecture.noullez.com" http://127.0.0.1:8085   # 200
 ```
 
----
+## 5. Cloudflare
 
-## 4. Configuration Cloudflared (Tunnel Cloudflare)
+Route déjà créée : `rapide-lecture.noullez.com` → `http://localhost:8085`.
+Tester https://rapide-lecture.noullez.com, puis `/robots.txt` et `/sitemap.xml`.
 
-Dans votre configuration Cloudflared (`/etc/cloudflared/config.yml`) :
+## Mise à jour
 
-```yaml
-tunnel: <VOTRE_TUNNEL_UUID>
-credentials-file: /etc/cloudflared/<VOTRE_TUNNEL_UUID>.json
-
-ingress:
-  - hostname: rapide-lecture.noullez.com
-    service: http://127.0.0.1:80
-  - service: http_status:404
-```
-
-Redémarrer le service Cloudflared :
 ```bash
-sudo systemctl restart cloudflared
+cd /mnt/shared_nas/rapide-lecture
+git pull
+npm run deploy         # npm ci + build + pm2 restart
 ```
 
----
+## Dépannage
 
-## 5. Gestionnaire de Processus de Production
-
-### Option A : Service systemd (`rsvp-reader.service`)
-
-Créer le fichier `/etc/systemd/system/rsvp-reader.service` :
-
-```ini
-[Unit]
-Description=Liseuse Rapide RSVP Node.js Web Application
-After=network.target
-
-[Service]
-Type=simple
-User=pi
-WorkingDirectory=/home/pi/rapid-serial-visual-presentation
-ExecStart=/usr/bin/node server/index.js
-Restart=always
-RestartSec=10
-Environment=NODE_ENV=production
-Environment=PORT=3000
-Environment=HOST=127.0.0.1
-Environment=SITE_URL=https://rapide-lecture.noullez.com
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Activer et démarrer le service :
-```bash
-sudo systemctl daemon-reload
-sudo systemctl enable rsvp-reader
-sudo systemctl start rsvp-reader
-sudo systemctl status rsvp-reader
-```
-
-### Option B : PM2
-
-Si vous préférez utiliser PM2 :
-```bash
-npm install -g pm2
-pm2 start server/index.js --name rsvp-reader --env production
-pm2 save
-pm2 startup
-```
+| Symptôme | Commande |
+|---|---|
+| 502 Bad Gateway | `pm2 logs rapide-lecture` (Node arrêté ?) |
+| Mauvais site affiché | `server_name` exact dans Nginx + `sudo nginx -t` |
+| 413 à l'upload | `client_max_body_size 30M` présent dans le bloc |
+| Port déjà pris | changer `PORT` dans `ecosystem.config.cjs` **et** `proxy_pass` Nginx |
