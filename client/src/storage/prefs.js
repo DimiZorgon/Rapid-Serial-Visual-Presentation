@@ -10,7 +10,7 @@ export function loadPreferences() {
     const raw = localStorage.getItem(PREFS_KEY);
     if (raw) return JSON.parse(raw);
   } catch {}
-  return { wpm: 300, theme: "dark", lastBookId: null };
+  return { wpm: 300, chunkSize: 1, theme: "dark", lastBookId: null };
 }
 
 export function savePreferences(prefs) {

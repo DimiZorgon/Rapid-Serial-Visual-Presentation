@@ -174,11 +174,21 @@
                 Contexte
             </button>
 
-            <!-- Droite : Vitesse en mots par minute -->
-            <div class="flex items-center gap-2.5 font-mono">
-                <button id="btnWpmMinus" class="hover:text-fg transition px-1 py-1" title="Réduire la vitesse">-25</button>
-                <span id="wpmDisplay" class="text-fg min-w-[64px] text-center">300 mpm</span>
-                <button id="btnWpmPlus" class="hover:text-fg transition px-1 py-1" title="Augmenter la vitesse">+25</button>
+            <!-- Droite : Mots par flash & Vitesse en mots par minute -->
+            <div class="flex items-center gap-3 sm:gap-4 font-mono">
+                <!-- Sélecteur 1, 2 ou 3 mots par flash -->
+                <div id="chunkSelector" class="inline-flex items-center rounded border border-subtle p-0.5 text-[11px]" title="Mots par flash (raccourcis 1, 2, 3)">
+                    <button id="btnChunk1" type="button" class="px-2 py-0.5 rounded transition text-fg font-medium bg-subtle" title="1 mot par flash (Touche 1)">1<span class="hidden sm:inline">m</span></button>
+                    <button id="btnChunk2" type="button" class="px-2 py-0.5 rounded transition hover:text-fg text-muted" title="2 mots par flash (Touche 2)">2<span class="hidden sm:inline">m</span></button>
+                    <button id="btnChunk3" type="button" class="px-2 py-0.5 rounded transition hover:text-fg text-muted" title="3 mots par flash (Touche 3)">3<span class="hidden sm:inline">m</span></button>
+                </div>
+
+                <!-- Vitesse MPM -->
+                <div class="flex items-center gap-1.5 sm:gap-2.5">
+                    <button id="btnWpmMinus" class="hover:text-fg transition px-1 py-1" title="Réduire la vitesse">-25</button>
+                    <span id="wpmDisplay" class="text-fg min-w-[58px] sm:min-w-[64px] text-center">300 mpm</span>
+                    <button id="btnWpmPlus" class="hover:text-fg transition px-1 py-1" title="Augmenter la vitesse">+25</button>
+                </div>
             </div>
 
         </div>

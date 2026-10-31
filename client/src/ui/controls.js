@@ -12,6 +12,20 @@ export function updateWpmDisplay(wpm) {
   if (display) display.textContent = `${wpm} mpm`;
 }
 
+export function updateChunkButtons(chunkSize) {
+  const size = Math.max(1, Math.min(3, Number(chunkSize) || 1));
+  [1, 2, 3].forEach((n) => {
+    const btn = document.getElementById(`btnChunk${n}`);
+    if (btn) {
+      if (n === size) {
+        btn.className = "px-2 py-0.5 rounded transition text-fg font-medium bg-subtle";
+      } else {
+        btn.className = "px-2 py-0.5 rounded transition hover:text-fg text-muted";
+      }
+    }
+  });
+}
+
 export function updatePlayPauseButton(isPlaying) {
   const btn = document.getElementById("btnPlayPause");
   if (btn) btn.textContent = isPlaying ? "Pause" : "Lecture";

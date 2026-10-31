@@ -35,3 +35,37 @@ export function getDelayForWord(wordObj, wpm = 300) {
 
   return Math.round(baseMs * mult);
 }
+
+/**
+ * Calculates display duration (ms) for a chunk of 1 to 3 words.
+ * Duration is proportional to chunk size so overall WPM rate remains constant.
+ * 
+ * @param {Array<object>} wordObjs Array of word token objects
+ * @param {number} [wpm=300] Words per minute
+ * @returns {number} Duration in milliseconds
+ */
+export function getDelayForChunk(wordObjs, wpm = 300) {
+  if (!Array.isArray(wordObjs) || wordObjs.length === 0) {
+    return Math.round(60000 / (wpm || 300));
+  }
+  const effectiveWpm = Math.max(10, Number(wpm) || 300);
+  const baseMs = 60000 / effectiveWpm;
+  const count = wordObjs.length;
+
+  let mult = 1.0;
+  for (let i = 0; i < count; i++) {
+    const w = wordObjs[i];
+    if (!w) continue;
+    if (w.isParagraphEnd) {
+      mult = Math.max(mult, 2.2);
+    } else if (w.isSentenceEnd) {
+      mult = Math.max(mult, 1.9);
+    } else if (w.isClauseEnd) {
+      mult = Math.max(mult, 1.4);
+    } else if (w.text && w.text.length > 8) {
+      mult = Math.max(mult, 1.2);
+    }
+  }
+
+  return Math.round(baseMs * count * mult);
+}

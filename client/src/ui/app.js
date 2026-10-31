@@ -5,8 +5,8 @@
 
 import JSZip from "jszip";
 import DOMPurify from "dompurify";
-import { getOrpIndex, splitWordOrp } from "../rsvp/orp.js";
-import { getDelayForWord } from "../rsvp/timing.js";
+import { getOrpIndex, splitWordOrp, splitChunkOrp } from "../rsvp/orp.js";
+import { getDelayForWord, getDelayForChunk } from "../rsvp/timing.js";
 import { compileChapter, prepareBookObject } from "../rsvp/compiler.js";
 import {
   getCurrentGlobalWordIndex,
@@ -35,6 +35,7 @@ import {
 import {
   clampWpm,
   updateWpmDisplay,
+  updateChunkButtons,
   updatePlayPauseButton,
   navigatePrevSentence,
   navigateNextSentence,
@@ -60,6 +61,7 @@ export const state = {
   wordIndex: 0,
   isPlaying: false,
   wpm: 300,
+  chunkSize: 1,
   theme: "dark",
   timerId: null,
   lastIdbSync: 0,
@@ -73,6 +75,22 @@ export function getCurrentChapter() {
   return state.book.chapters[state.chapterIndex] || state.book.chapters[0];
 }
 
+export function getCurrentChunkWords(chapter, startIndex, targetChunkSize = 1) {
+  if (!chapter || !chapter.words || !chapter.words.length) return [];
+  const words = [];
+  const size = Math.max(1, Math.min(3, Number(targetChunkSize) || 1));
+  const max = Math.min(chapter.words.length, startIndex + size);
+  for (let i = startIndex; i < max; i++) {
+    const w = chapter.words[i];
+    words.push(w);
+    // Don't cross sentence/paragraph boundary within a single visual flash
+    if (w.isSentenceEnd || w.isParagraphEnd) {
+      break;
+    }
+  }
+  return words.length ? words : [chapter.words[startIndex]];
+}
+
 export function renderReader(skipSave = false) {
   const hasBook = Boolean(state.book && state.book.chapters && state.book.chapters.length > 0);
   updateStageVisibility(hasBook);
@@ -81,15 +99,16 @@ export function renderReader(skipSave = false) {
   if (!chapter || !chapter.words || !chapter.words.length) return;
 
   state.wordIndex = Math.max(0, Math.min(chapter.words.length - 1, state.wordIndex));
-  const wordObj = chapter.words[state.wordIndex];
+  const currentChunk = getCurrentChunkWords(chapter, state.wordIndex, state.chunkSize);
+  const wordObj = currentChunk[0];
 
-  renderWordDisplay(wordObj.text);
+  renderWordDisplay(currentChunk.map(w => w.text));
   renderProgressInfo(state);
   renderPauseSentence(chapter, wordObj, state.isPlaying, (clickedWordIdx) => {
     state.wordIndex = clickedWordIdx;
     renderReader(true);
     saveProgress(true);
-  });
+  }, currentChunk.length);
 
   if (!skipSave) {
     saveProgress(false);
@@ -99,6 +118,7 @@ export function renderReader(skipSave = false) {
 export function saveProgress(syncIdb = false) {
   savePreferences({
     wpm: state.wpm,
+    chunkSize: state.chunkSize,
     theme: state.theme,
     lastBookId: state.book ? state.book.id : null
   });
@@ -124,14 +144,15 @@ export function scheduleNextWord() {
   const chapter = getCurrentChapter();
   if (!chapter || !chapter.words.length) return;
 
-  const currentWord = chapter.words[state.wordIndex];
-  const delay = getDelayForWord(currentWord, state.wpm);
+  const currentChunk = getCurrentChunkWords(chapter, state.wordIndex, state.chunkSize);
+  const delay = getDelayForChunk(currentChunk, state.wpm);
+  const step = currentChunk.length;
 
   state.timerId = setTimeout(() => {
     if (!state.isPlaying) return;
 
-    if (state.wordIndex + 1 < chapter.words.length) {
-      state.wordIndex++;
+    if (state.wordIndex + step < chapter.words.length) {
+      state.wordIndex += step;
       const now = Date.now();
       const syncIdb = (now - state.lastIdbSync > 2000);
       renderReader(true);
@@ -145,6 +166,8 @@ export function scheduleNextWord() {
       saveProgress(true);
       scheduleNextWord();
     } else {
+      state.wordIndex = chapter.words.length - 1;
+      renderReader(true);
       pauseReading();
       showStatusToast("Fin du livre");
     }
@@ -200,6 +223,14 @@ export function seekToExactPercentage(percentValue, syncIdb = true) {
 export function setWpm(val) {
   state.wpm = clampWpm(val);
   updateWpmDisplay(state.wpm);
+  saveProgress(false);
+}
+
+export function setChunkSize(val) {
+  const size = Math.max(1, Math.min(3, Number(val) || 1));
+  state.chunkSize = size;
+  updateChunkButtons(size);
+  renderReader(true);
   saveProgress(false);
 }
 
@@ -480,6 +511,14 @@ export function initAppEvents() {
   if (wpmMinusBtn) wpmMinusBtn.addEventListener("click", () => setWpm(state.wpm - 25));
   if (wpmPlusBtn) wpmPlusBtn.addEventListener("click", () => setWpm(state.wpm + 25));
 
+  // Words per flash (chunk size: 1, 2, or 3 words)
+  [1, 2, 3].forEach((n) => {
+    const btn = document.getElementById(`btnChunk${n}`);
+    if (btn) {
+      btn.addEventListener("click", () => setChunkSize(n));
+    }
+  });
+
   // Theme toggle
   const themeBtn = document.getElementById("btnToggleTheme");
   if (themeBtn) {
@@ -674,6 +713,15 @@ export function initAppEvents() {
     } else if (e.code === "ArrowDown") {
       e.preventDefault();
       setWpm(state.wpm - 25);
+    } else if (e.key === "1" || e.code === "Digit1" || e.code === "Numpad1") {
+      e.preventDefault();
+      setChunkSize(1);
+    } else if (e.key === "2" || e.code === "Digit2" || e.code === "Numpad2") {
+      e.preventDefault();
+      setChunkSize(2);
+    } else if (e.key === "3" || e.code === "Digit3" || e.code === "Numpad3") {
+      e.preventDefault();
+      setChunkSize(3);
     } else if (e.code === "Escape") {
       closeExpandedModal();
       closeTocModal();
@@ -690,8 +738,11 @@ export async function bootstrapApp() {
   const prefs = loadPreferences();
   if (prefs) {
     if (prefs.wpm) setWpm(prefs.wpm);
+    if (prefs.chunkSize) setChunkSize(prefs.chunkSize);
     if (prefs.theme) setTheme(prefs.theme);
     lastBookId = prefs.lastBookId;
+  } else {
+    setChunkSize(1);
   }
 
   // Refresh saved books from IndexedDB

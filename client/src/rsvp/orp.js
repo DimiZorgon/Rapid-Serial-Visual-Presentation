@@ -48,3 +48,42 @@ export function splitWordOrp(word) {
     suffix: word.slice(idx + 1)
   };
 }
+
+/**
+ * Splits a chunk of 1, 2, or 3 words with psycho-visually aligned ORP.
+ * 
+ * Positioning principles in multi-word RSVP:
+ * - 1 word: ORP of word 1 is the pivot letter.
+ * - 2 words: ORP of word 1 is the pivot letter, word 2 follows in suffix (parafoveal span).
+ * - 3 words: ORP of word 2 (center word) is the pivot letter, word 1 in prefix, word 3 in suffix.
+ * 
+ * @param {string[]} words Array of 1 to 3 words
+ * @returns {{ prefix: string, pivot: string, suffix: string }}
+ */
+export function splitChunkOrp(words) {
+  if (!Array.isArray(words) || words.length === 0) {
+    return { prefix: "", pivot: "", suffix: "" };
+  }
+  const cleanWords = words.map(w => String(w || "").trim()).filter(Boolean);
+  if (cleanWords.length === 0) {
+    return { prefix: "", pivot: "", suffix: "" };
+  }
+  if (cleanWords.length === 1) {
+    return splitWordOrp(cleanWords[0]);
+  }
+  if (cleanWords.length === 2) {
+    const s1 = splitWordOrp(cleanWords[0]);
+    return {
+      prefix: s1.prefix,
+      pivot: s1.pivot,
+      suffix: s1.suffix + " " + cleanWords[1]
+    };
+  }
+  // 3 words: center word holds the pivot letter
+  const s2 = splitWordOrp(cleanWords[1]);
+  return {
+    prefix: cleanWords[0] + " " + s2.prefix,
+    pivot: s2.pivot,
+    suffix: s2.suffix + " " + cleanWords[2]
+  };
+}

@@ -3,11 +3,15 @@
  * Controls word display, ORP alignment, font scaling, and pause context sentence.
  */
 
-import { splitWordOrp } from "../rsvp/orp.js";
+import { splitWordOrp, splitChunkOrp } from "../rsvp/orp.js";
 import { getExactGlobalPercentage } from "../rsvp/indexer.js";
 
-export function renderWordDisplay(wordText) {
-  const { prefix, pivot, suffix } = splitWordOrp(wordText || "");
+export function renderWordDisplay(wordsInput) {
+  const words = Array.isArray(wordsInput)
+    ? wordsInput
+    : [String(wordsInput || "")];
+
+  const { prefix, pivot, suffix } = splitChunkOrp(words);
 
   const prefixEl = document.getElementById("rsvpPrefix");
   const pivotEl = document.getElementById("rsvpPivot");
@@ -18,14 +22,20 @@ export function renderWordDisplay(wordText) {
   if (pivotEl) pivotEl.textContent = pivot;
   if (suffixEl) suffixEl.textContent = suffix;
 
+  const totalLength = prefix.length + (pivot ? 1 : 0) + suffix.length;
+
   if (container) {
-    container.className = (wordText && wordText.length > 15)
-      ? "rsvp-word-grid text-2xl sm:text-4xl font-normal tracking-tight"
-      : "rsvp-word-grid text-4xl sm:text-6xl font-normal tracking-tight";
+    if (words.length >= 3 || totalLength > 20) {
+      container.className = "rsvp-word-grid text-xl sm:text-3xl font-normal tracking-tight";
+    } else if (words.length === 2 || totalLength > 13) {
+      container.className = "rsvp-word-grid text-2xl sm:text-4xl font-normal tracking-tight";
+    } else {
+      container.className = "rsvp-word-grid text-4xl sm:text-6xl font-normal tracking-tight";
+    }
   }
 }
 
-export function renderPauseSentence(chapter, currentWordObj, isPlaying, onWordClick) {
+export function renderPauseSentence(chapter, currentWordObj, isPlaying, onWordClick, chunkLength = 1) {
   const container = document.getElementById("pauseSentenceContainer");
   const textEl = document.getElementById("pauseSentenceText");
   if (!container || !textEl) return;
@@ -50,13 +60,17 @@ export function renderPauseSentence(chapter, currentWordObj, isPlaying, onWordCl
     return;
   }
 
+  const activeStart = currentWordObj.index;
+  const activeEnd = activeStart + Math.max(1, chunkLength) - 1;
+
   const frag = document.createDocumentFragment();
   for (let i = sent.startWordIndex; i <= sent.endWordIndex; i++) {
     const w = chapter.words[i];
     if (!w) continue;
     const span = document.createElement("span");
     span.textContent = w.text;
-    span.className = "tappable-word" + (i === currentWordObj.index ? " active-word-mark" : "");
+    const isChunkActive = (i >= activeStart && i <= activeEnd);
+    span.className = "tappable-word" + (isChunkActive ? " active-word-mark" : "");
     span.addEventListener("click", (e) => {
       e.stopPropagation();
       if (typeof onWordClick === "function") {
