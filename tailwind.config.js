@@ -2,8 +2,7 @@
 export default {
   content: [
     "./client/index.html",
-    "./client/src/**/*.{js,ts,jsx,tsx,html}",
-    "./Liseuse Rapide RSVP.html"
+    "./client/src/**/*.{js,ts,jsx,tsx,html}"
   ],
   darkMode: ["selector", '[data-theme="light"]'],
   theme: {
