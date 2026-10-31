@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Liseuse Rapide RSVP — Lecture Rapide en Ligne & EPUB</title>
+    
+    <!-- SEO Primary Meta Tags -->
+    <meta name="description" content="Liseuse rapide en ligne RSVP (Rapid Serial Visual Presentation) et lecteur d'ebooks EPUB. Améliorez votre vitesse de lecture sans fatigue visuelle grâce à l'alignement ORP.">
+    <meta name="keywords" content="Lecture rapide, epub, liseuse, RSVP, Rapid Serial Visual Presentation, lecture rapide en ligne, speed reading, liseuse epub en ligne">
+    <meta name="author" content="Liseuse Rapide RSVP">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://rapide-lecture.noullez.com/">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://rapide-lecture.noullez.com/">
+    <meta property="og:title" content="Liseuse Rapide RSVP — Lecture Rapide en Ligne & EPUB">
+    <meta property="og:description" content="Liseuse rapide en ligne RSVP et lecteur d'ebooks EPUB avec alignement optique ORP.">
+    <meta property="og:image" content="https://rapide-lecture.noullez.com/favicon.svg">
+    <meta property="og:site_name" content="Liseuse Rapide RSVP">
+    <meta property="og:locale" content="fr_FR">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://rapide-lecture.noullez.com/">
+    <meta name="twitter:title" content="Liseuse Rapide RSVP — Lecture Rapide en Ligne & EPUB">
+    <meta name="twitter:description" content="Liseuse rapide en ligne RSVP et lecteur d'ebooks EPUB avec alignement optique ORP.">
+    <meta name="twitter:image" content="https://rapide-lecture.noullez.com/favicon.svg">
+
+    <!-- Web App Manifest & Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="manifest" href="/site.webmanifest">
+    <meta name="theme-color" content="#0a0a0a">
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Liseuse Rapide RSVP",
+      "url": "https://rapide-lecture.noullez.com/",
+      "description": "Application web de lecture rapide RSVP (Rapid Serial Visual Presentation) et liseuse EPUB en ligne.",
+      "applicationCategory": "EducationalApplication",
+      "operatingSystem": "All",
+      "inLanguage": "fr",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "EUR"
+      }
+    }
+    </script>
+
+    <!-- Google Fonts Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Application Stylesheet (Bundled via Vite + Tailwind CSS) -->
+    <link rel="stylesheet" href="/src/css/style.css">
+</head>
+<body class="h-[100dvh] w-screen overflow-hidden flex flex-col justify-between">
+
+    <!-- ================= BARRE SUPÉRIEURE MINIMALISTE ================= -->
+    <header class="w-full max-w-3xl mx-auto px-5 pt-4 pb-2 flex items-center justify-between text-xs tracking-wide text-muted z-20 shrink-0">
+        <div class="flex items-center gap-5">
+            <button id="btnOpenLibrary" class="hover:text-fg transition py-1">
+                Livres <span id="libraryCountLabel" class="font-mono text-[11px] opacity-60"></span>
+            </button>
+            <label for="epubFileInput" class="cursor-pointer hover:text-fg transition py-1">
+                + EPUB
+            </label>
+            <input type="file" id="epubFileInput" accept=".epub,.txt,application/epub+zip,text/plain" class="hidden">
+            <button id="btnOpenToc" class="hover:text-fg transition py-1 hidden">
+                Sommaire
+            </button>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <span id="bookTitleHeader" class="truncate max-w-[140px] sm:max-w-[240px] opacity-60 hidden sm:inline"></span>
+            <button id="btnToggleTheme" class="hover:text-fg transition py-1 font-mono text-[11px]" title="Changer le thème">
+                Jour / Nuit
+            </button>
+        </div>
+    </header>
+
+    <!-- ================= ÉTAT VIDE (AUCUN LIVRE CHARGÉ) ================= -->
+    <section id="emptyStateView" class="flex-1 flex flex-col items-center justify-center px-6 text-center">
+        <label for="epubFileInput" class="cursor-pointer group py-12 px-8 flex flex-col items-center gap-3">
+            <span class="text-sm sm:text-base text-fg font-normal group-hover:opacity-75 transition">
+                Importer un fichier .epub
+            </span>
+            <span class="text-xs text-muted max-w-xs leading-relaxed">
+                Le livre sera enregistré dans votre navigateur pour reprendre votre lecture à tout moment.
+            </span>
+        </label>
+    </section>
+
+    <!-- ================= ZONE DE LECTURE CENTRALE RSVP ================= -->
+    <main id="readerMainView" class="hidden flex-1 flex flex-col justify-center items-center relative px-4 max-w-3xl w-full mx-auto overflow-hidden">
+
+        <!-- Zone tactile principale (Play / Pause au clic ou au tap) -->
+        <div id="rsvpStage" class="w-full py-14 sm:py-20 relative cursor-pointer flex items-center justify-center">
+            <!-- Repères subtils de fixation oculaire (38% depuis la gauche) -->
+            <div class="pivot-tick top-4"></div>
+            <div class="pivot-tick bottom-4"></div>
+
+            <!-- Mot RSVP aligné sur la lettre pivot -->
+            <div id="rsvpWordContainer" class="rsvp-word-grid text-4xl sm:text-6xl font-normal tracking-tight">
+                <span id="rsvpPrefix" class="rsvp-prefix"></span>
+                <span id="rsvpPivot" class="rsvp-pivot"></span>
+                <span id="rsvpSuffix" class="rsvp-suffix"></span>
+            </div>
+        </div>
+
+        <!-- Phrase actuelle (affichée sobrement en pause pour garder le contexte) -->
+        <div id="pauseSentenceContainer" class="w-full max-w-xl min-h-[3.5rem] px-2 text-center transition-opacity duration-150">
+            <p id="pauseSentenceText" class="text-xs sm:text-sm text-muted leading-relaxed line-clamp-3"></p>
+        </div>
+
+    </main>
+
+    <!-- ================= PIED DE PAGE MINIMALISTE ================= -->
+    <footer id="readerFooterView" class="hidden w-full max-w-3xl mx-auto px-5 pb-5 pt-2 flex flex-col gap-4 z-20 shrink-0">
+
+        <!-- Ligne 1 : Nom du chapitre + Sélection exacte du pourcentage global -->
+        <div class="flex flex-col gap-2">
+            <div class="flex items-center justify-between text-xs text-muted gap-4">
+                <!-- Nom du chapitre en bas (cliquable pour ouvrir le sommaire) -->
+                <button id="btnFooterChapter" class="truncate text-left hover:text-fg transition max-w-[70%]">
+                    Chapitre
+                </button>
+
+                <!-- Pourcentage global cliquable + Champ de saisie exacte -->
+                <div class="flex items-center shrink-0 font-mono text-xs">
+                    <button id="btnPercentDisplay" title="Cliquer pour saisir un pourcentage exact"
+                        class="hover:text-fg transition py-0.5 px-1">
+                        0.0%
+                    </button>
+
+                    <div id="percentInputContainer" class="hidden items-center gap-1">
+                        <input type="number" id="percentExactInput" min="0" max="100" step="0.1"
+                            class="w-16 bg-transparent text-fg text-right font-mono text-xs border-b border-neutral-500 focus:outline-none py-0.5"
+                            placeholder="0.0">
+                        <span class="text-muted">%</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Curseur de progression sur la totalité du livre (0% à 100%) -->
+            <input type="range" id="globalProgressSlider" min="0" max="1000" step="1" value="0"
+                title="Position globale dans le livre">
+        </div>
+
+        <!-- Ligne 2 : Contrôles de lecture épurés + Vitesse MPM -->
+        <div class="flex items-center justify-between text-xs text-muted pt-1">
+
+            <!-- Gauche : Navigation phrases & Lecture/Pause -->
+            <div class="flex items-center gap-5 sm:gap-7">
+                <button id="btnPrevSentence" class="hover:text-fg transition py-1" title="Phrase précédente (Flèche gauche)">
+                    ←
+                </button>
+                <button id="btnPlayPause" class="text-fg font-medium tracking-wide py-1 min-w-[54px] text-left">
+                    Lecture
+                </button>
+                <button id="btnNextSentence" class="hover:text-fg transition py-1" title="Phrase suivante (Flèche droite)">
+                    →
+                </button>
+            </div>
+
+            <!-- Centre : Bouton Élargissement (revoir le chapitre/paragraphe complet) -->
+            <button id="btnExpandContext" class="hover:text-fg transition py-1">
+                Contexte
+            </button>
+
+            <!-- Droite : Vitesse en mots par minute -->
+            <div class="flex items-center gap-2.5 font-mono">
+                <button id="btnWpmMinus" class="hover:text-fg transition px-1 py-1" title="Réduire la vitesse">-25</button>
+                <span id="wpmDisplay" class="text-fg min-w-[64px] text-center">300 mpm</span>
+                <button id="btnWpmPlus" class="hover:text-fg transition px-1 py-1" title="Augmenter la vitesse">+25</button>
+            </div>
+
+        </div>
+    </footer>
+
+    <!-- ================= VUE ÉLARGISSEMENT (TEXTE COMPLET DU CHAPITRE) ================= -->
+    <div id="expandedOverlay" class="fixed inset-0 z-40 bg-overlay hidden flex-col">
+        <div class="w-full max-w-2xl mx-auto px-5 py-4 flex items-center justify-between text-xs text-muted shrink-0">
+            <span id="expandedChapterTitle" class="truncate max-w-[65%]">Chapitre</span>
+            <div class="flex items-center gap-5">
+                <button id="btnCenterActiveWord" class="hover:text-fg transition py-1">Mot actuel</button>
+                <button id="btnCloseExpanded" class="text-fg font-medium py-1">Fermer</button>
+            </div>
+        </div>
+
+        <div id="expandedTextContainer"
+            class="flex-1 w-full max-w-2xl mx-auto px-5 py-6 overflow-y-auto clean-scroll text-muted text-sm sm:text-base leading-relaxed space-y-5 select-text">
+            <!-- Paragraphes du chapitre avec mots cliquables -->
+        </div>
+    </div>
+
+    <!-- ================= VUE SOMMAIRE (LISTE DES CHAPITRES) ================= -->
+    <div id="tocOverlay" class="fixed inset-0 z-40 bg-overlay hidden flex-col">
+        <div class="w-full max-w-xl mx-auto px-5 py-4 flex items-center justify-between text-xs text-muted shrink-0">
+            <span>Sommaire</span>
+            <button id="btnCloseToc" class="text-fg font-medium py-1">Fermer</button>
+        </div>
+
+        <div id="tocList" class="flex-1 w-full max-w-xl mx-auto px-5 py-4 overflow-y-auto clean-scroll space-y-3 text-sm">
+            <!-- Chapitres générés dynamiquement -->
+        </div>
+    </div>
+
+    <!-- ================= VUE BIBLIOTHÈQUE (LIVRES ENREGISTRÉS DANS INDEXEDDB) ================= -->
+    <div id="libraryOverlay" class="fixed inset-0 z-40 bg-overlay hidden flex-col">
+        <div class="w-full max-w-xl mx-auto px-5 py-4 flex items-center justify-between text-xs text-muted shrink-0">
+            <span>Livres enregistrés</span>
+            <div class="flex items-center gap-5">
+                <label for="epubFileInput" class="cursor-pointer hover:text-fg transition py-1">+ Importer EPUB</label>
+                <button id="btnCloseLibrary" class="text-fg font-medium py-1">Fermer</button>
+            </div>
+        </div>
+
+        <div id="libraryList" class="flex-1 w-full max-w-xl mx-auto px-5 py-6 overflow-y-auto clean-scroll space-y-6 text-sm">
+            <!-- Liste des livres sauvegardés dans IndexedDB -->
+        </div>
+    </div>
+
+    <!-- ================= MESSAGE DISCRET (TOAST) ================= -->
+    <div id="statusToast"
+        class="fixed top-12 left-1/2 -translate-x-1/2 z-50 text-xs text-muted pointer-events-none opacity-0 transition-opacity duration-200">
+    </div>
+
+    <!-- Application Script Module Entry -->
+    <script type="module" src="/src/ui/app.js"></script>
+</body>
+</html>

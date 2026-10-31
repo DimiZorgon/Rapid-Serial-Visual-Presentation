@@ -12,8 +12,9 @@ const __dirname = path.dirname(__filename);
 export function createApp() {
   const app = express();
 
-  // 1. Disable x-powered-by
+  // 1. Disable x-powered-by & enable trust proxy
   app.disable('x-powered-by');
+  app.set('trust proxy', 1);
 
   // 2. Security Headers (Helmet)
   app.use(configureSecurityHeaders());

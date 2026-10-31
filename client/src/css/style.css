@@ -1,0 +1,150 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0a0a0a;
+  --bg-overlay: rgba(10, 10, 10, 0.97);
+  --fg: #ececec;
+  --muted: #666666;
+  --subtle: #222222;
+  --pivot: #e11d48;
+}
+
+[data-theme="light"] {
+  --bg: #fafafa;
+  --bg-overlay: rgba(250, 250, 250, 0.97);
+  --fg: #171717;
+  --muted: #888888;
+  --subtle: #e5e5e5;
+  --pivot: #e11d48;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--fg);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  overscroll-behavior: none;
+  user-select: none;
+}
+
+.text-fg { color: var(--fg); }
+.text-muted { color: var(--muted); }
+.bg-app { background-color: var(--bg); }
+.bg-overlay { background-color: var(--bg-overlay); }
+
+/* Optical ORP alignment (38% from left) */
+.rsvp-word-grid {
+  display: grid;
+  grid-template-columns: 38% auto 62%;
+  align-items: baseline;
+  width: 100%;
+  white-space: nowrap;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.rsvp-prefix {
+  text-align: right;
+  overflow: hidden;
+}
+
+.rsvp-pivot {
+  color: var(--pivot);
+  font-weight: 500;
+  text-align: center;
+}
+
+.rsvp-suffix {
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Dual vertical pivot marks at 38% */
+.pivot-tick {
+  position: absolute;
+  left: 38%;
+  transform: translateX(-50%);
+  width: 1px;
+  height: 8px;
+  background-color: var(--muted);
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* Minimalist range slider */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  width: 100%;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 2px;
+  background: var(--subtle);
+  border-radius: 1px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--fg);
+  margin-top: -5px;
+  transition: transform 0.15s ease;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover,
+input[type="range"]::-webkit-slider-thumb:active {
+  transform: scale(1.35);
+}
+
+/* Number input without spin buttons */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Clickable words in context views */
+.tappable-word {
+  cursor: pointer;
+  border-radius: 2px;
+  transition: color 0.1s ease, opacity 0.1s ease;
+}
+.tappable-word:hover {
+  color: var(--fg);
+}
+.active-word-mark {
+  color: var(--fg);
+  text-decoration: underline;
+  text-decoration-color: var(--pivot);
+  text-underline-offset: 4px;
+  font-weight: 500;
+}
+.active-sentence-mark {
+  color: var(--fg);
+}
+
+/* Subtle scrollbar */
+.clean-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+.clean-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.clean-scroll::-webkit-scrollbar-thumb {
+  background: var(--subtle);
+}
