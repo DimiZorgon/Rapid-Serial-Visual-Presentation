@@ -1,7 +1,8 @@
 # Déploiement – Raspberry Pi (site statique, comme maze / cube)
 
 L'application est **100 % statique** : lecture EPUB/texte, moteur RSVP et
-stockage se font dans le navigateur. Aucun process Node/PM2 en production.
+stockage se font dans le navigateur. Tout se gère depuis le Pi : clone, install, build.
+Nginx sert directement le dossier `dist/` généré. Aucun process Node/PM2.
 
 | Élément | Valeur |
 |---|---|
@@ -10,40 +11,64 @@ stockage se font dans le navigateur. Aucun process Node/PM2 en production.
 | Nginx | bloc dans `/etc/nginx/sites-available/static-sites`, `listen 8085` |
 | Cloudflare | `rapide-lecture.noullez.com` → `http://localhost:8085` |
 
-## 1. Build (sur le PC)
+## Prérequis
+
+Node.js **20.19+ ou 22.12+** sur le Pi (`node -v`). Sinon :
 
 ```bash
-npm install
-npm run build        # génère dist/ (index.html, assets/, robots.txt, sitemap.xml…)
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt-get install -y nodejs
 ```
 
-## 2. Copier sur le NAS
-
-Copier le dossier `dist/` dans `/mnt/shared_nas/rapide-lecture/dist`.
-
-Vérification : `ls -la /mnt/shared_nas/rapide-lecture/dist/` affiche `index.html`.
-
-## 3. Nginx
-
-Ajouter le bloc [`deploy/nginx-rapide-lecture.conf`](deploy/nginx-rapide-lecture.conf)
-à la fin de `/etc/nginx/sites-available/static-sites` :
+## 1. Installation (sur le Pi)
 
 ```bash
-sudo nano /etc/nginx/sites-available/static-sites
+cd /mnt/shared_nas
+git clone https://github.com/DimiZorgon/Rapid-Serial-Visual-Presentation.git rapide-lecture
+cd rapide-lecture
+npm install
+npm run build
+```
+
+Vérification : `ls /mnt/shared_nas/rapide-lecture/dist/` affiche `index.html`.
+
+Le fichier `.npmrc` désactive les liens symboliques (`bin-links=false`) : l'install
+fonctionne aussi sur un partage NAS.
+
+## 2. Nginx
+
+Ajouter le bloc [`deploy/nginx-rapide-lecture.conf`](deploy/nginx-rapide-lecture.conf)
+à la fin de `static-sites` :
+
+```bash
+cat deploy/nginx-rapide-lecture.conf | sudo tee -a /etc/nginx/sites-available/static-sites
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-## 4. Cloudflare
+## 3. Cloudflare
 
-Route déjà créée : `rapide-lecture` / `noullez.com` → `http://localhost:8085`.
+Route : `rapide-lecture` / `noullez.com` → `http://localhost:8085`.
 Tester https://rapide-lecture.noullez.com, `/robots.txt`, `/sitemap.xml`.
 
 ## Mise à jour
 
-`npm run build` sur le PC puis remplacer `dist/` sur le NAS. Pas de reload nginx nécessaire.
+```bash
+cd /mnt/shared_nas/rapide-lecture
+npm run update       # git pull + npm install + build
+```
 
-## Développement local
+Pas de reload nginx nécessaire.
+
+## Dépannage
+
+| Symptôme | Solution |
+|---|---|
+| `EBADENGINE` à l'install | Node trop ancien → installer Node 22 (voir Prérequis) |
+| `Cannot find module @rolldown/binding-linux-arm…` | `rm -rf node_modules package-lock.json && npm install` |
+| 404 / mauvais site | `server_name` et `root` exacts dans nginx, puis `sudo nginx -t` |
+
+## Développement local (PC)
 
 - `npm run dev` : serveur Vite avec rechargement.
-- `npm start` : serveur Express optionnel (sert `dist/` avec Helmet), utile pour tests uniquement.
+- `npm start` : serveur Express optionnel (tests uniquement, inutile en production).
