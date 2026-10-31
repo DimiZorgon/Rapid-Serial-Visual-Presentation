@@ -11,9 +11,6 @@
     "build": "vite build",
     "dev": "vite",
     "start": "node server/index.js",
-    "pm2:start": "pm2 start ecosystem.config.cjs && pm2 save",
-    "pm2:restart": "pm2 restart rapide-lecture",
-    "deploy": "npm ci && npm run build && (pm2 restart rapide-lecture || npm run pm2:start)",
     "test": "node --test tests/**/*.test.js",
     "test:unit": "node --test tests/unit/*.test.js",
     "test:integration": "node --test tests/integration/*.test.js"
